@@ -1,0 +1,38 @@
+* background-job.el
+
+Iterate an iterator forward in the background.
+
+Importantly, the “job” pauses when there is user input.
+
+** Usage
+
+First define an iterator. For example:
+
+#+begin_src emacs-lisp
+(iter-defun kisaragi/iter-preload-files (files)
+  "Return an iterator that loads FILES."
+  (dolist-with-progress-reporter (file files) "Loading files"
+    (unless (get-file-buffer file)
+      (iter-yield (find-file-noselect file)))))
+#+end_src
+
+(Note that this example requires Emacs 27 because =dolist-with-progress-reporter= is only added then.)
+
+Then start the “job”:
+
+#+begin_src emacs-lisp
+(background-job-start
+ (kisaragi/iter-preload-files
+  (org-agenda-files))
+ (lambda ()
+   (message "All Org files loaded!")))
+#+end_src
+
+** Interface
+
+- =(background-job-start iterator callback)= :: return a timer; adds the timer to =background-job-list=
+- =(background-job-stop timer)= :: cancel the timer; remove it from =background-job-list=
+
+** Caveats
+
+This will make sure your “background job” never blocks user input for more than one iteration. It doesn’t help if one iteration takes a long time to run.
