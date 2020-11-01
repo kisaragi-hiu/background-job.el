@@ -48,19 +48,24 @@ Iterate ITERATOR until there is user input; resume after some
 idle time.
 
 CALLBACK is called when `iter-end-of-sequence' is raised."
-  (let ((timer
-         (run-with-idle-timer
-          background-job-idle-time :repeat
-          (lambda ()
-            (condition-case nil
-                (while (not (input-pending-p))
-                  (iter-next iterator))
-              (iter-end-of-sequence
-               ;; effectively the callback
-               (cancel-timer timer)
-               (setq background-job-list (remove timer background-job-list))
-               (when callback
-                 (funcall callback))))))))
+  (let* ((timer
+          (run-with-idle-timer
+           background-job-idle-time :repeat
+           ;; dummy function
+           #'identity)))
+    ;; We have to do this so that we can access the timer itself in
+    ;; the function body.
+    (timer-set-function
+     timer
+     (lambda ()
+       (condition-case nil
+           (while (not (input-pending-p))
+             (iter-next iterator))
+         (iter-end-of-sequence
+          ;; effectively the callback
+          (background-job-stop timer)
+          (when callback
+            (funcall callback))))))
     (push timer background-job-list)
     timer))
 
